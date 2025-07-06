@@ -1,223 +1,405 @@
+/**
+ * Admin Dashboard Page
+ * 
+ * A comprehensive dashboard for managing feedback submissions.
+ * Features filtering, searching, statistics, and detailed feedback management.
+ */
+
 'use client';
-import { useMemo, useState } from 'react';
-import { CheckCircleIcon, ClockIcon, FilterIcon, SearchIcon, BarChart3Icon, CheckIcon, XIcon } from 'lucide-react';
-import { FeedbackItem } from '@/utils/feedback';
+
+import React, { useMemo, useState } from 'react';
+import { Search, Filter, BarChart3, CheckCircle, Clock, Eye } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import PageContainer from '@/components/common/PageContainer';
+import Section from '@/components/common/Section';
+import StatusBadge from '@/components/common/StatusBadge';
 import FeedbackModal from '@/components/FeedbackModal';
+import { FeedbackItem } from '@/utils/feedback';
 import { DummyFeedBackItems } from '@/dummyDatabase/feedback';
+import { cn } from '@/lib/utils';
 
-// interface AdminDashboardProps {
-//   feedbackItems: FeedbackItem[];
-//   updateStatus: (id: string, status: 'pending' | 'resolved') => void;
-// }
-
-const AdminDashboard = () => {
-
+/**
+ * Admin Dashboard component for managing feedback
+ */
+const AdminDashboard: React.FC = () => {
+  // State management
+  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(DummyFeedBackItems);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'resolved'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
 
-  const [feedBackList, setFeedBackList] = useState<FeedbackItem[]>(DummyFeedBackItems)
-  
-  // Get unique categories
+  /**
+   * Get unique categories from feedback items
+   */
   const categories = useMemo(() => {
     const uniqueCategories = new Set<string>();
-    feedBackList.forEach(item => uniqueCategories.add(item.category));
+    feedbackList.forEach(item => uniqueCategories.add(item.category));
     return Array.from(uniqueCategories);
-  }, [feedBackList]);
-  
-  // Filter feedback items
+  }, [feedbackList]);
+
+  /**
+   * Filter feedback items based on current filters
+   */
   const filteredItems = useMemo(() => {
-    return feedBackList.filter(item => {
+    return feedbackList.filter(item => {
       // Status filter
       if (statusFilter !== 'all' && item.status !== statusFilter) {
         return false;
       }
+      
       // Category filter
       if (categoryFilter !== 'all' && item.category !== categoryFilter) {
         return false;
       }
+      
       // Search query
       if (searchQuery && !item.message.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
+      
       return true;
     });
-  }, [feedBackList, statusFilter, categoryFilter, searchQuery]);
-  
-  // Stats
+  }, [feedbackList, statusFilter, categoryFilter, searchQuery]);
+
+  /**
+   * Calculate statistics from feedback data
+   */
   const stats = useMemo(() => {
-    const total = feedBackList.length;
-    const pending = feedBackList.filter(item => item.status === 'pending').length;
-    const resolved = feedBackList.filter(item => item.status === 'resolved').length;
+    const total = feedbackList.length;
+    const pending = feedbackList.filter(item => item.status === 'pending').length;
+    const resolved = feedbackList.filter(item => item.status === 'resolved').length;
+    
     const categoryCounts: Record<string, number> = {};
-    feedBackList.forEach(item => {
+    feedbackList.forEach(item => {
       categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
     });
+    
     return {
       total,
       pending,
       resolved,
-      categoryCounts
+      categoryCounts,
+      resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0,
     };
-  }, [feedBackList]);
+  }, [feedbackList]);
 
-  // Format date
-  const formatDate = (dateString: string) => {
+  /**
+   * Format date for display
+   */
+  const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleString();
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-
-  // Handle status update and close modal
+  /**
+   * Handle status update for feedback item
+   */
   const handleStatusUpdate = (id: string, status: 'pending' | 'resolved') => {
-    alert("update status")
+    setFeedbackList(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, status } : item
+      )
+    );
   };
-  return <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Feedback Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Manage and respond to anonymous feedback from your school community
-        </p>
-      </div>
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="bg-purple-100 p-3 rounded-full mr-4">
-              <BarChart3Icon className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Total Feedback
-              </p>
-              <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-            </div>
-          </div>
+
+  /**
+   * Clear all filters
+   */
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setSearchQuery('');
+  };
+
+  return (
+    <PageContainer>
+      <PageContainer.Header>
+        <div className="space-y-4">
+          <h1 className="text-3xl md:text-4xl font-bold text-text-primary">
+            Feedback Dashboard
+          </h1>
+          <p className="text-lg text-text-secondary max-w-2xl">
+            Manage and respond to anonymous feedback from your school community. 
+            Track issues, monitor trends, and ensure every voice is heard.
+          </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="bg-purple-100 p-3 rounded-full mr-4">
-              <ClockIcon className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {stats.pending}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="bg-purple-100 p-3 rounded-full mr-4">
-              <CheckCircleIcon className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Resolved</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {stats.resolved}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
-          <div className="flex items-center mb-4 md:mb-0">
-            <FilterIcon className="h-5 w-5 text-gray-500 mr-2" />
-            <span className="text-gray-700 font-medium">Filters:</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-            {/* Status Filter */}
-            <div>
-              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="resolved">Resolved</option>
-              </select>
-            </div>
-            {/* Category Filter */}
-            <div>
-              <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="all">All Categories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category} ({stats.categoryCounts[category] || 0})
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* Search */}
-            <div className="relative">
-              <SearchIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input type="text" placeholder="Search feedback..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Feedback List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Feedback Items ({filteredItems.length})
-          </h2>
-        </div>
-        {filteredItems.length === 0 ? 
-        ( 
-        <div className="p-8 text-center text-gray-500">
-          No feedback items match your filters
-        </div>
-        ) :
-        (
-          <div className="divide-y divide-gray-200">
-            {filteredItems.map(item => <div key={item.id} className="p-6 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => setSelectedFeedback(item)}>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                  <div className="flex items-center mb-2 md:mb-0">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mr-2">
-                      {item.category}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {formatDate(item.date)}
-                    </span>
+      </PageContainer.Header>
+
+      <PageContainer.Content>
+        {/* Statistics Section */}
+        <Section className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Total Feedback */}
+            <Card className="hover:shadow-lg transition-shadow duration-normal">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-tertiary">
+                      Total Feedback
+                    </p>
+                    <p className="text-3xl font-bold text-text-primary">
+                      {stats.total}
+                    </p>
                   </div>
-                  <div className="flex items-center">
-                    <span className={`flex items-center px-3 py-1 rounded-full text-xs font-medium ${item.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                      {item.status === 'resolved' ? <CheckCircleIcon className="h-3 w-3 mr-1" /> : <ClockIcon className="h-3 w-3 mr-1" />}
-                      {item.status === 'resolved' ? 'Resolved' : 'Pending'}
-                    </span>
-                    <div className="ml-4" onClick={e => e.stopPropagation()} // Prevent modal from opening when clicking status button
-              >
-                      {item.status === 'pending' ? <button onClick={() => handleStatusUpdate(item.id, 'resolved')} className="flex items-center text-sm text-green-600 hover:text-green-800">
-                          <CheckIcon className="h-4 w-4 mr-1" />
-                          Mark Resolved
-                        </button> : <button onClick={() => handleStatusUpdate(item.id, 'pending')} className="flex items-center text-sm text-amber-600 hover:text-amber-800">
-                          <XIcon className="h-4 w-4 mr-1" />
-                          Mark Pending
-                        </button>}
-                    </div>
+                  <div className="bg-primary-100 p-3 rounded-full">
+                    <BarChart3 className="h-6 w-6 text-primary-600" />
                   </div>
                 </div>
-                <p className="text-gray-700 line-clamp-2">{item.message}</p>
-                <button className="text-purple-600 text-sm mt-2 hover:text-purple-800" onClick={e => {
-            e.stopPropagation();
-            setSelectedFeedback(item);
-          }}>
-                  Read more
-                </button>
-              </div>)}
+              </CardContent>
+            </Card>
+
+            {/* Pending */}
+            <Card className="hover:shadow-lg transition-shadow duration-normal">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-tertiary">
+                      Pending
+                    </p>
+                    <p className="text-3xl font-bold text-warning-600">
+                      {stats.pending}
+                    </p>
+                  </div>
+                  <div className="bg-warning-100 p-3 rounded-full">
+                    <Clock className="h-6 w-6 text-warning-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Resolved */}
+            <Card className="hover:shadow-lg transition-shadow duration-normal">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-tertiary">
+                      Resolved
+                    </p>
+                    <p className="text-3xl font-bold text-success-600">
+                      {stats.resolved}
+                    </p>
+                  </div>
+                  <div className="bg-success-100 p-3 rounded-full">
+                    <CheckCircle className="h-6 w-6 text-success-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Resolution Rate */}
+            <Card className="hover:shadow-lg transition-shadow duration-normal">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-tertiary">
+                      Resolution Rate
+                    </p>
+                    <p className="text-3xl font-bold text-accent-600">
+                      {stats.resolutionRate}%
+                    </p>
+                  </div>
+                  <div className="bg-accent-100 p-3 rounded-full">
+                    <BarChart3 className="h-6 w-6 text-accent-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        )}
-      </div>
-      
-    {/* Feedback Modal */}
-    
-    {selectedFeedback && (
-      <FeedbackModal feedback={selectedFeedback} onClose={() => setSelectedFeedback(null)} onStatusChange={handleStatusUpdate} />
-    )}
-    </div>;
+        </Section>
+
+        {/* Filters Section */}
+        <Section variant="card" spacing="medium" className="mb-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-text-tertiary" />
+              <h3 className="text-lg font-semibold text-text-primary">Filters</h3>
+              {(statusFilter !== 'all' || categoryFilter !== 'all' || searchQuery) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearFilters}
+                  className="ml-auto"
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-text-primary">
+                  Status
+                </label>
+                <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Category Filter */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-text-primary">
+                  Category
+                </label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category} value={category}>
+                        {category} ({stats.categoryCounts[category] || 0})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Search */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-text-primary">
+                  Search
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                  <Input
+                    placeholder="Search feedback..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* Feedback List */}
+        <Section variant="card" spacing="none">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Feedback Items ({filteredItems.length})</span>
+              {filteredItems.length > 0 && (
+                <span className="text-sm font-normal text-text-secondary">
+                  Showing {filteredItems.length} of {feedbackList.length} items
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {filteredItems.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="mx-auto w-16 h-16 bg-secondary-100 rounded-full flex items-center justify-center mb-4">
+                  <Search className="h-8 w-8 text-secondary-400" />
+                </div>
+                <h3 className="text-lg font-medium text-text-primary mb-2">
+                  No feedback found
+                </h3>
+                <p className="text-text-secondary">
+                  {searchQuery || statusFilter !== 'all' || categoryFilter !== 'all'
+                    ? 'Try adjusting your filters to see more results.'
+                    : 'No feedback submissions yet.'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border-primary">
+                {filteredItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      'p-6 hover:bg-background-tertiary cursor-pointer',
+                      'transition-colors duration-fast'
+                    )}
+                    onClick={() => setSelectedFeedback(item)}
+                  >
+                    <div className="space-y-4">
+                      {/* Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <StatusBadge status={item.status}>
+                            {item.status === 'resolved' ? 'Resolved' : 'Pending'}
+                          </StatusBadge>
+                          
+                          <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
+                            {item.category}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm text-text-tertiary">
+                            {formatDate(item.date)}
+                          </span>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFeedback(item);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Message Preview */}
+                      <div>
+                        <p className="text-text-primary line-clamp-2 leading-relaxed">
+                          {item.message}
+                        </p>
+                        
+                        {item.message.length > 150 && (
+                          <button
+                            className="text-primary-600 text-sm mt-2 hover:text-primary-700 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFeedback(item);
+                            }}
+                          >
+                            Read more →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Section>
+      </PageContainer.Content>
+
+      {/* Feedback Modal */}
+      {selectedFeedback && (
+        <FeedbackModal
+          feedback={selectedFeedback}
+          onClose={() => setSelectedFeedback(null)}
+          onStatusChange={handleStatusUpdate}
+        />
+      )}
+    </PageContainer>
+  );
 };
+
 export default AdminDashboard;

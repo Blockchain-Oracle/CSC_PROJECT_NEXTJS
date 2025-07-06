@@ -1,66 +1,248 @@
+/**
+ * Admin Login Page
+ * 
+ * Authentication page for administrators to access the feedback dashboard.
+ * Features form validation, error handling, and responsive design.
+ */
+
 'use client';
 
 import React, { useState } from 'react';
+import { Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import PageContainer from '@/components/common/PageContainer';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { cn } from '@/lib/utils';
 
-import { LockIcon, AlertCircleIcon } from 'lucide-react';
+interface LoginFormData {
+  username: string;
+  password: string;
+}
 
-const AdminLogin = () => {
+/**
+ * Admin login page component
+ */
+const AdminLogin: React.FC = () => {
+  // Form state
+  const [formData, setFormData] = useState<LoginFormData>({
+    username: '',
+    password: '',
+  });
   
-  const [username, setUsername] = useState('');
-
-  const [password, setPassword] = useState('');
-
+  // UI state
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Partial<LoginFormData>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /**
+   * Validates form data
+   */
+  const validateForm = (): boolean => {
+    const newErrors: Partial<LoginFormData> = {};
 
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  /**
+   * Handles form submission
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
 
-    setError("")
+    if (!validateForm()) {
+      return;
+    }
 
+    setIsLoading(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock authentication logic
+      if (formData.username === 'admin' && formData.password === 'password') {
+        // Successful login - redirect to dashboard
+        window.location.href = '/admin/dashboard';
+      } else {
+        setError('Invalid username or password. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handles input changes
+   */
+  const handleInputChange = (field: keyof LoginFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear field error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    
+    // Clear general error
+    if (error) {
+      setError('');
+    }
   };
 
   return (
-
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
+    <PageContainer variant="gradient" className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
-              <LockIcon className="h-8 w-8 text-purple-600" />
+        <Card className="shadow-xl">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+              <Lock className="h-8 w-8 text-primary-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">Admin Login</h1>
-            <p className="text-gray-600 mt-2">
-              Access the feedback management dashboard
-            </p>
-          </div>
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-start">
-              <AlertCircleIcon className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
+            
+            <div className="space-y-2">
+              <CardTitle className="text-2xl font-bold text-text-primary">
+                Admin Login
+              </CardTitle>
+              <p className="text-text-secondary">
+                Access the feedback management dashboard
+              </p>
             </div>
-          )}
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label htmlFor="username" className="block text-gray-700 font-medium mb-2">
-                Username
-              </label>
-              <input id="username" type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required />
-            </div>
-            <div className="mb-6">
-              <label htmlFor="password" className="block text-gray-700 font-medium mb-2">
-                Password
-              </label>
-              <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required />
-            </div>
-            <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md transition-colors">
-              Sign In
-            </button>
-          </form>
+          </CardHeader>
 
-        </div>
+          <CardContent className="space-y-6">
+            {/* Error Alert */}
+            {error && (
+              <div className="bg-error-50 border border-error-200 text-error-700 px-4 py-3 rounded-lg flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Username Field */}
+              <div className="space-y-2">
+                <label 
+                  htmlFor="username" 
+                  className="text-sm font-medium text-text-primary"
+                >
+                  Username <span className="text-error-500">*</span>
+                </label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  placeholder="Enter your username"
+                  className={cn(
+                    errors.username && 'border-error-500 focus:border-error-500'
+                  )}
+                  aria-describedby={errors.username ? 'username-error' : undefined}
+                  disabled={isLoading}
+                />
+                {errors.username && (
+                  <p id="username-error" className="text-sm text-error-600">
+                    {errors.username}
+                  </p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <label 
+                  htmlFor="password" 
+                  className="text-sm font-medium text-text-primary"
+                >
+                  Password <span className="text-error-500">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    placeholder="Enter your password"
+                    className={cn(
+                      'pr-10',
+                      errors.password && 'border-error-500 focus:border-error-500'
+                    )}
+                    aria-describedby={errors.password ? 'password-error' : undefined}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-text-tertiary" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-text-tertiary" />
+                    )}
+                  </Button>
+                </div>
+                {errors.password && (
+                  <p id="password-error" className="text-sm text-error-600">
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <LoadingSpinner size="sm" text="Signing in..." />
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            {/* Demo Credentials */}
+            <div className="bg-info-50 border border-info-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-info-800 mb-2">
+                Demo Credentials
+              </h4>
+              <div className="text-sm text-info-700 space-y-1">
+                <p><strong>Username:</strong> admin</p>
+                <p><strong>Password:</strong> password</p>
+              </div>
+            </div>
+
+            {/* Security Notice */}
+            <div className="text-center text-sm text-text-tertiary">
+              <p>
+                This is a secure area. All login attempts are logged and monitored.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
-  )
+    </PageContainer>
+  );
 };
+
 export default AdminLogin;
